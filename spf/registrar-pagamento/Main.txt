@@ -1,0 +1,81 @@
+Excel.LaunchExcel.LaunchAndOpenUnderExistingProcess Path: $'''%file_path_fluxo%\\planilha_controle_pagamento.xlsx''' Visible: True ReadOnly: False Instance=> planilha
+Excel.GetFirstFreeColumnRow Instance: planilha FirstFreeColumn=> coluna_livre FirstFreeRow=> linha_livre
+Excel.ReadFromExcel.ReadCells Instance: planilha StartColumn: $'''a''' StartRow: 1 EndColumn: coluna_livre - 1 EndRow: linha_livre - 1 ReadAsText: False FirstLineIsHeader: True RangeValue=> dados_pagamento
+Excel.CloseExcel.Close Instance: planilha
+/# Inicializa dados_tdco
+
+ATENÇÃO! AGÊNCIA SÓ PODE TER 4 DÍGITOS. SE TIVER MAIS QUE ISSO DÁ ERRO NO FLUXO.#/
+SET dados_tdco TO { ^['UO', 'Banco', 'Agência', 'Conta', 'Conta única'], ['1091', '341', '3380', '573-0', 'False'], ['1261', '', '', '', 'True'], ['4631', '', '', '', 'True'], ['4291', '999', '9001-9', '900579-3', 'False'], ['1441', '341', '3380', '830-4', 'False'], ['1541', '999', '9001-9', '900570-2', 'False'], ['2071', '999', '9001-9', '900151-1', 'False'], ['2271', '999', '9001-9', '900481-2', 'False'], ['2261', '999', '9001-9', '900480-4', 'False'], ['2311', '', '', '', 'True'], ['2321', '999', '9001-9', '900479-6', 'False'], ['1501', '', '', '', 'True'] }
+LOOP FOREACH linha IN dados_pagamento
+    /# Converte Valor NF
+Retorna: valorTotal#/
+    Text.RecognizeEntitiesInText Text: linha['ValorNF'] Mode: Text.RecognizerMode.Number Language: Text.RecognizerLanguage.English RecognizedEntities=> valorTotal
+    Variables.TruncateNumber.GetIntegerPart Number: valorTotal[0][0] * 100 Result=> valorTotal
+    /# Converte Data Vencimento
+Retorna: dadosVencimento#/
+    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> tempDataAtual
+    DateTime.Subtract FromDate: tempDataAtual SubstractDate: linha['Data Venc.'] TimeUnit: DateTime.DifferenceTimeUnit.Seconds TimeDifference=> tempDifData
+    IF tempDifData > 0 THEN
+        Text.GetSubtext.GetSubtext Text: tempDataAtual CharacterPosition: 0 NumberOfChars: 2 Subtext=> tempDataDia
+        Text.GetSubtext.GetSubtext Text: tempDataAtual CharacterPosition: 3 NumberOfChars: 2 Subtext=> tempDataMes
+        SET dadosVencimento TO $'''{Return}'''
+    ELSE
+        Text.GetSubtext.GetSubtext Text: linha['Data Venc.'] CharacterPosition: 0 NumberOfChars: 2 Subtext=> tempDataDia
+        Text.GetSubtext.GetSubtext Text: linha['Data Venc.'] CharacterPosition: 3 NumberOfChars: 2 Subtext=> tempDataMes
+        SET dadosVencimento TO $'''%tempDataDia%%tempDataMes%{Return}'''
+    END
+    /# Converte CPF/CNPJ
+Retorna: dadosCPF, dadosCNPJ#/
+    IF linha['CNPJ/CPF Credor'].Length = 13 THEN
+        SET dadosCNPJ TO $'''0%linha['CNPJ/CPF Credor']%'''
+        SET dadosCPF TO $'''{Tab}{Tab}'''
+    ELSE IF linha['CNPJ/CPF Credor'].Length = 14 THEN
+        SET dadosCNPJ TO linha['CNPJ/CPF Credor']
+        SET dadosCPF TO $'''{Tab}{Tab}'''
+    ELSE IF linha['CNPJ/CPF Credor'].Length = 10 THEN
+        SET dadosCPF TO $'''0%linha['CNPJ/CPF Credor']%'''
+        SET dadosCNPJ TO $'''{Tab}{Tab}{Tab}'''
+    ELSE IF linha['CNPJ/CPF Credor'].Length = 11 THEN
+        SET dadosCPF TO linha['CNPJ/CPF Credor']
+        SET dadosCNPJ TO $'''{Tab}{Tab}{Tab}'''
+    END
+    /# Converte Agência
+Retorna: dadosAgencia, dadosDVAgencia#/
+    IF Contains(linha['Agência'], $'''-''', True) THEN
+        Text.CropText.CropTextBeforeFlag Text: linha['Agência'] ToFlag: $'''-''' IgnoreCase: False CroppedText=> dadosAgencia
+        IF dadosAgencia.Length < 5 THEN
+            SET dadosAgencia TO $'''%dadosAgencia%{Tab}'''
+        END
+        Text.CropText.CropTextAfterFlag Text: linha['Agência'] FromFlag: $'''-''' IgnoreCase: False CroppedText=> dadosDVAgencia
+    ELSE
+        IF linha['Agência'].Length = 5 THEN
+            SET dadosAgencia TO linha['Agência']
+        ELSE
+            SET dadosAgencia TO $'''%linha['Agência']%{Tab}'''
+        END
+        SET dadosDVAgencia TO $'''{Tab}'''
+    END
+    /# Converte Conta
+Retorna: dadosConta, dadosDVConta#/
+    IF Contains(linha['Conta'], $'''-''', True) THEN
+        Text.CropText.CropTextBeforeFlag Text: linha['Conta'] ToFlag: $'''-''' IgnoreCase: False CroppedText=> dadosConta
+        IF dadosConta.Length < 12 THEN
+            SET dadosConta TO $'''%dadosConta%{Tab}'''
+        END
+        Text.CropText.CropTextAfterFlag Text: linha['Conta'] FromFlag: $'''-''' IgnoreCase: False CroppedText=> dadosDVConta
+    ELSE
+        IF linha['Conta'].Length = 12 THEN
+            SET dadosConta TO linha['Conta']
+        ELSE
+            SET dadosConta TO $'''%linha['Conta']%{Tab}'''
+        END
+        SET dadosDVConta TO $'''{Tab}'''
+    END
+    /# Converte Valor Bruto OP
+Retorna: dadosValorBruto#/
+    Text.RecognizeEntitiesInText Text: linha['Valor Bruto OP'] Mode: Text.RecognizerMode.Number Language: Text.RecognizerLanguage.English RecognizedEntities=> tempValorBruto
+    Variables.TruncateNumber.GetIntegerPart Number: tempValorBruto[0][0] * 100 Result=> dadosValorBruto
+    CALL 'siafi-preto'
+END
+Excel.SaveExcel.Save Instance: planilha
+Excel.CloseExcel.Close Instance: planilha

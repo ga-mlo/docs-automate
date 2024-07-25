@@ -1,0 +1,10 @@
+Folder.GetSubfolders Folder: file_path_fluxo FolderFilter: $'''*''' IncludeSubfolders: False FailOnAccessDenied: True SortBy1: Folder.SortBy.FullName SortDescending1: True SortBy2: Folder.SortBy.NoSort SortDescending2: False SortBy3: Folder.SortBy.NoSort SortDescending3: False Subfolders=> unidades
+LOOP FOREACH unidade IN unidades
+    Folder.GetSubfolders Folder: unidade FolderFilter: $'''*''' IncludeSubfolders: False FailOnAccessDenied: True SortBy1: Folder.SortBy.FullName SortDescending1: True SortBy2: Folder.SortBy.NoSort SortDescending2: False SortBy3: Folder.SortBy.NoSort SortDescending3: False Subfolders=> processos
+    DISABLE IF Contains(unidade.Name, $'''prodemge''', True) THEN
+        DISABLE NEXT LOOP
+    DISABLE END
+    LOOP FOREACH processo IN processos
+        CALL 'ler-nfs'
+    END
+END

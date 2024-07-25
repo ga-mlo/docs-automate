@@ -1,0 +1,53 @@
+Excel.LaunchExcel.LaunchUnderExistingProcess Visible: True Instance=> planilha
+Excel.ActivateCellInExcel.ActivateCell Instance: planilha Column: $'''b''' Row: 2
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha TextToSend: $'''{LWin}({Up})''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha TextToSend: $'''{LShiftKey}({Down}{Down}{Down}{Right}{Right}{Right}{Right}{Right})''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha TextToSend: $'''{LMenu}({C}{B}{T})''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha TextToSend: $'''{ALT}({K}{B}{O}){Tab}150{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha TextToSend: $'''{ALT}({C}{F}{C}){Tab}{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha TextToSend: $'''{ALT}({K}{A})''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha TextToSend: $'''{ALT}({K})VR{Tab}{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+SET count TO 0
+SET col TO 2
+SET li TO 2
+Variables.GenerateRandomNumber.ListOfRandomNumbers MinimumValue: 0 MaximumValue: 23 NumbersCount: 24 AllowDuplicates: False RandomNumbers=> random_numbers
+LOOP FOREACH informacao IN dados
+    Excel.WriteToExcel.WriteCell Instance: planilha Value: dados[random_numbers[count]] Column: col Row: li
+    Variables.IncreaseVariable Value: count IncrementValue: 1
+    Variables.IncreaseVariable Value: col IncrementValue: 1
+    IF col = 8 THEN
+        Variables.IncreaseVariable Value: li IncrementValue: 1
+        SET col TO 2
+    END
+END
+DISABLE Excel.LaunchExcel.LaunchAndOpenUnderExistingProcess Path: $'''C:\\Users\\AMSDO\\Downloads\\jogo da memória\\Pasta2.xlsx''' Visible: True ReadOnly: False Instance=> planilha
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha TextToSend: $'''{Down}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+SET respostas TO ['teste1', 'teste2', 'teste3', 'teste4', 'teste5', 'teste6', 'teste7', 'teste8', 'teste9', 'teste10', 'teste11', 'teste12']
+DISABLE Variables.RemoveItemFromList.RemoveItemFromListByValue Item: $'''teste12''' ItemMatchAllOccurrences: False List: respostas
+LOOP WHILE (respostas.Count) > (0)
+    Display.InputDialog Title: $'''Jogo da memória''' Message: $'''Informe a linha e a coluna da célula que quer revelar''' InputType: Display.InputType.SingleLine IsTopMost: False UserInput=> LiColPalpite1
+    Excel.ActivateCellInExcel.ActivateCell Instance: planilha Column: LiColPalpite1[0] Row: LiColPalpite1[1]
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha TextToSend: $'''{ALT}({C}{F}{C}){Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+    WAIT 2
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha TextToSend: $'''{Control}({C})''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+    Clipboard.GetText Text=> palpite1
+    Display.InputDialog Title: $'''Jogo da memória''' Message: $'''Informe a linha e a coluna da célula que quer revelar''' InputType: Display.InputType.SingleLine IsTopMost: False UserInput=> LiColPalpite2
+    Excel.ActivateCellInExcel.ActivateCell Instance: planilha Column: LiColPalpite2[0] Row: LiColPalpite2[1]
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha TextToSend: $'''{ALT}({C}{F}{C}){Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+    WAIT 2
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha TextToSend: $'''{Control}({C})''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+    Clipboard.GetText Text=> palpite2
+    Display.ShowMessageDialog.ShowMessage Title: $'''Jogo da memória''' Message: respostas.Count Icon: Display.Icon.Information Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: False
+    IF palpite1 = palpite2 THEN
+        DISABLE Display.ShowMessageDialog.ShowMessage Title: $'''Jogo da memória''' Message: $'''Você acertou!''' Icon: Display.Icon.Information Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: False
+        Text.Trim Text: palpite1 TrimOption: Text.TrimOption.Both TrimmedText=> palpite1
+        Variables.RemoveItemFromList.RemoveItemFromListByValue Item: palpite1 ItemMatchAllOccurrences: False List: respostas
+    ELSE
+        Excel.ActivateCellInExcel.ActivateCell Instance: planilha Column: LiColPalpite1[0] Row: LiColPalpite1[1]
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha TextToSend: $'''{ALT}({C}{F}{C}){Tab}{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+        WAIT 2
+        Excel.ActivateCellInExcel.ActivateCell Instance: planilha Column: LiColPalpite2[0] Row: LiColPalpite2[1]
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha TextToSend: $'''{ALT}({C}{F}{C}){Tab}{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+        WAIT 2
+    END
+END

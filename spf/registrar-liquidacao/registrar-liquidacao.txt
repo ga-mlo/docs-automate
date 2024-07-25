@@ -1,0 +1,142 @@
+Excel.LaunchExcel.LaunchAndOpenUnderExistingProcess Path: $'''%file_path_fluxo%\\planilha_controle.xlsx''' Visible: True ReadOnly: False Instance=> planilha
+Excel.GetFirstFreeColumnRow Instance: planilha FirstFreeColumn=> coluna_livre FirstFreeRow=> linha_livre
+Excel.ReadFromExcel.ReadCells Instance: planilha StartColumn: $'''a''' StartRow: 1 EndColumn: coluna_livre - 1 EndRow: linha_livre - 1 ReadAsText: False FirstLineIsHeader: True RangeValue=> dados_liquidacao
+SET row_index TO 1
+LOOP FOREACH linha IN dados_liquidacao
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''%linha['Unidade Executora']%{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    WAIT 1
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{Tab}51{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    WAIT 1
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''4{Tab}1{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    # Definir relação entre a uo e a ue
+    WAIT 1
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''%uo%%linha['No. Empenho']%{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    WAIT 1
+    IF NotContains(linha['Conformidade'], $'''N/A''', True) THEN
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''%linha['Conformidade']%{Tab}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    END
+    IF (IsEmpty(linha['Valor INSS']) AND IsEmpty(linha['Valor ISSQN'])) THEN
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''n''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    ELSE
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''s''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    END
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''n''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateOnly CurrentDateTime=> data_atual
+    Text.ConvertDateTimeToText.FromDateTime DateTime: data_atual StandardFormat: Text.WellKnownDateTimeFormat.ShortDate Result=> data_atual
+    Text.SplitText.SplitWithDelimiter Text: data_atual CustomDelimiter: $'''/''' IsRegEx: False Result=> data_atual
+    Text.JoinText.Join List: data_atual Result=> data_atual
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: data_atual DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    Text.CropText.CropTextBetweenFlags Text: $'''%linha['Início Competência']%''' FromFlag: $'''/''' ToFlag: $'''/''' IgnoreCase: False CroppedText=> competencia
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: competencia DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    Text.FromNumber Number: linha['Valor NF'] DecimalPlaces: 2 UseThousandsSeparator: False FormattedNumber=> valor_liquidacao
+    Text.SplitText.SplitWithDelimiter Text: valor_liquidacao CustomDelimiter: $''',''' IsRegEx: False Result=> valor_liquidacao
+    Text.JoinText.Join List: valor_liquidacao Result=> valor_liquidacao
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''%valor_liquidacao%{Tab}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''%linha['MASP']%{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    WAIT 1
+    # Converte INSS e Competência INSS
+    IF (IsNotEmpty(linha['Valor INSS'])) THEN
+        Text.FromNumber Number: linha['Valor INSS'] DecimalPlaces: 2 UseThousandsSeparator: False FormattedNumber=> valor_inss
+        Text.SplitText.SplitWithDelimiter Text: valor_inss CustomDelimiter: $''',''' IsRegEx: False Result=> valor_inss
+        Text.JoinText.Join List: valor_inss Result=> valor_inss
+        Text.ConvertDateTimeToText.FromDateTime DateTime: linha['Data Emissão'] StandardFormat: Text.WellKnownDateTimeFormat.ShortDate Result=> competencia_inss
+        Text.CropText.CropTextAfterFlag Text: competencia_inss FromFlag: $'''/''' IgnoreCase: False CroppedText=> competencia_inss
+        Text.SplitText.SplitWithDelimiter Text: competencia_inss CustomDelimiter: $'''/''' IsRegEx: False Result=> competencia_inss
+        Text.JoinText.Join List: competencia_inss Result=> competencia_inss
+    END
+    # Converte ISSQN e CNPJ ISSQN
+    IF (IsNotEmpty(linha['Valor ISSQN'])) THEN
+        Text.FromNumber Number: linha['Valor ISSQN'] DecimalPlaces: 2 UseThousandsSeparator: False FormattedNumber=> valor_issqn
+        Text.SplitText.SplitWithDelimiter Text: valor_issqn CustomDelimiter: $''',''' IsRegEx: False Result=> valor_issqn
+        Text.JoinText.Join List: valor_issqn Result=> valor_issqn
+        IF (IsEmpty(linha['CNPJ Município'])) = True THEN
+            EXIT Code: 0 ErrorMessage: $'''CNPJ Município não informado na planilha.'''
+        ELSE
+            Text.Replace Text: linha['CNPJ Município'] TextToFind: $'''.''' IsRegEx: False IgnoreCase: False ReplaceWith: $'''''' ActivateEscapeSequences: False Result=> cnpj_issqn
+            Text.Replace Text: cnpj_issqn TextToFind: $'''/''' IsRegEx: False IgnoreCase: False ReplaceWith: $'''''' ActivateEscapeSequences: False Result=> cnpj_issqn
+            Text.Replace Text: cnpj_issqn TextToFind: $'''-''' IsRegEx: False IgnoreCase: False ReplaceWith: $'''''' ActivateEscapeSequences: False Result=> cnpj_issqn
+        END
+    END
+    IF (IsNotEmpty(linha['Valor ISSQN'])) AND (IsNotEmpty(linha['Valor INSS'])) THEN
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{Down}01{Down}01{F5}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+        WAIT 1
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''%cnpj_inss%%competencia_inss%%valor_inss%{Tab}%cnpj_issqn%%valor_issqn%''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{F5}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    ELSE IF (IsNotEmpty(linha['Valor ISSQN'])) THEN
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{Down}{Down}{Down}01{F5}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+        WAIT 1
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''%cnpj_issqn%%valor_issqn%''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{F5}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    ELSE IF (IsNotEmpty(linha['Valor INSS'])) THEN
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{Down}01{F5}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+        WAIT 1
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''%cnpj_inss%%competencia_inss%%valor_inss%''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{F5}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    END
+    WAIT 1
+    Text.Trim Text: linha['Nome Credor'] TrimOption: Text.TrimOption.Both TrimmedText=> nome_credor
+    Text.Trim Text: linha['Número da Nota Fiscal'] TrimOption: Text.TrimOption.Both TrimmedText=> numero_nf
+    Text.Trim Text: linha['ID'] TrimOption: Text.TrimOption.Both TrimmedText=> id
+    Text.Trim Text: linha['Processo SEI'] TrimOption: Text.TrimOption.Both TrimmedText=> processo_sei
+    IF Contains(nome_credor, $'''/''', False) THEN
+        Text.Replace Text: nome_credor TextToFind: $'''/''' IsRegEx: False IgnoreCase: False ReplaceWith: $''' ''' ActivateEscapeSequences: False Result=> nome_credor
+    END
+    Text.Replace Text: processo_sei TextToFind: $'''/''' IsRegEx: False IgnoreCase: False ReplaceWith: $'''-''' ActivateEscapeSequences: False Result=> processo_sei
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''%nome_credor%, %numero_nf%, %id%, %processo_sei%''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{F5}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    WAIT 1
+    # Liquidar
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{F5}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    WAIT 2
+    UIAutomation.TakeScreenshotOfUIElement.TakeScreenshotOfUIElementAndSaveToFile Control: appmask['Window \'Mint0213:1\''] ImageFilePath: $'''C:\\Users\\AMSDO\\Downloads\\liquidação\\image.png''' ImageFormat: UIAutomation.ImageFormat.Png ImageFile=> ImageFile
+    OCR.ExtractTextWithOCR.ExtractTextFromFileWithWindowsOcr ImageFile: $'''%file_path_fluxo%\\image.png''' WindowsOcrLanguage: OCR.WindowsOcrLanguage.Portuguese ImageWidthMultiplier: 1 ImageHeightMultiplier: 1 OcrText=> seq_liquidacao
+    Text.CropText.CropTextBetweenFlags Text: seq_liquidacao FromFlag: $'''liquidacao:''' ToFlag: $'''unid''' IgnoreCase: True CroppedText=> seq_liquidacao
+    Text.Trim Text: seq_liquidacao TrimOption: Text.TrimOption.Both TrimmedText=> seq_liquidacao
+    # Comentar quando tiver liquidando
+    DISABLE SET seq_liquidacao TO 5
+    Excel.WriteToExcel.WriteCell Instance: planilha Value: seq_liquidacao Column: $'''U''' Row: row_index + 1
+    Variables.IncreaseVariable Value: row_index IncrementValue: 1
+    # Enviar para assinatura
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    WAIT 1
+    # Comentar quando tiver liquidando
+    DISABLE MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{F2}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    WAIT 1
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{F3}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    WAIT 1
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{F3}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    WAIT 1
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{F3}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+    WAIT 1
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: $'''Mint0213:1''' Class: $'''''' TextToSend: $'''{F3}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+END
+Excel.SaveExcel.Save Instance: planilha
+Excel.CloseExcel.Close Instance: planilha
+DISABLE UIAutomation.TakeScreenshotOfUIElement.TakeScreenshotOfUIElementAndSaveToFile Control: appmask['Window \'Mint0213:1\''] ImageFilePath: $'''C:\\Users\\AMSDO\\Downloads\\liquidação\\image.png''' ImageFormat: UIAutomation.ImageFormat.Png ImageFile=> ImageFile
+DISABLE WebAutomation.LaunchChrome.LaunchChrome Url: $'''file:///C:/Users/AMSDO/Downloads/fluxo/prodemge/SEI_5140.01.0002022_2024_872/[1]-89458724_Nota_Fiscal.pdf''' WindowState: WebAutomation.BrowserWindowState.Maximized ClearCache: False ClearCookies: False WaitForPageToLoadTimeout: 60 Timeout: 60 PiPUserDataFolderMode: WebAutomation.PiPUserDataFolderModeEnum.AutomaticProfile BrowserInstance=> teste
+DISABLE OCR.ExtractTextWithOCR.ExtractTextFromForegroundWindowWithWindowsOcr WindowsOcrLanguage: OCR.WindowsOcrLanguage.Portuguese ImageWidthMultiplier: 1 ImageHeightMultiplier: 1 OcrText=> seq_liquidacao
+DISABLE WebAutomation.TakeScreenshot.TakeScreenshotSaveToFile BrowserInstance: teste File: $'''C:\\Users\\AMSDO\\Downloads\\teste.png''' FileFormat: WebAutomation.FileFormat.Png
+
+# [ControlRepository][PowerAutomateDesktop]
+
+{
+  "ControlRepositorySymbols": [
+    {
+      "IgnoreImagesOnSerialization": false,
+      "Repository": "{\r\n  \"Screens\": [\r\n    {\r\n      \"Controls\": [],\r\n      \"Handle\": {\r\n        \"value\": 0\r\n      },\r\n      \"ProcessName\": null,\r\n      \"ScreenShot\": null,\r\n      \"ElementTypeName\": \"Window\",\r\n      \"InstanceId\": \"5f0bb109-c91a-4253-91e0-fa4184e19475\",\r\n      \"Name\": \"Window 'Mint0213:1'\",\r\n      \"SelectorCount\": 1,\r\n      \"Selectors\": [\r\n        {\r\n          \"CustomSelector\": null,\r\n          \"Elements\": [\r\n            {\r\n              \"Attributes\": [\r\n                {\r\n                  \"Ignore\": true,\r\n                  \"IsOrdinal\": false,\r\n                  \"Name\": \"Class\",\r\n                  \"Operation\": \"EqualTo\",\r\n                  \"Value\": \"gdkWindowToplevel\"\r\n                },\r\n                {\r\n                  \"Ignore\": true,\r\n                  \"IsOrdinal\": false,\r\n                  \"Name\": \"Enabled\",\r\n                  \"Operation\": \"EqualTo\",\r\n                  \"Value\": true\r\n                },\r\n                {\r\n                  \"Ignore\": true,\r\n                  \"IsOrdinal\": false,\r\n                  \"Name\": \"Id\",\r\n                  \"Operation\": \"EqualTo\",\r\n                  \"Value\": \"\"\r\n                },\r\n                {\r\n                  \"Ignore\": false,\r\n                  \"IsOrdinal\": false,\r\n                  \"Name\": \"Name\",\r\n                  \"Operation\": \"EqualTo\",\r\n                  \"Value\": \"Mint0213:1\"\r\n                },\r\n                {\r\n                  \"Ignore\": true,\r\n                  \"IsOrdinal\": true,\r\n                  \"Name\": \"Ordinal\",\r\n                  \"Operation\": \"EqualTo\",\r\n                  \"Value\": 0\r\n                },\r\n                {\r\n                  \"Ignore\": false,\r\n                  \"IsOrdinal\": false,\r\n                  \"Name\": \"Process\",\r\n                  \"Operation\": \"EqualTo\",\r\n                  \"Value\": \"remote-viewer\"\r\n                },\r\n                {\r\n                  \"Ignore\": true,\r\n                  \"IsOrdinal\": false,\r\n                  \"Name\": \"Visible\",\r\n                  \"Operation\": \"EqualTo\",\r\n                  \"Value\": true\r\n                }\r\n              ],\r\n              \"CustomValue\": null,\r\n              \"Ignore\": false,\r\n              \"Name\": \"Window 'Mint0213:1'\",\r\n              \"Tag\": \"window\"\r\n            }\r\n          ],\r\n          \"Ignore\": false,\r\n          \"ImageSelector\": null,\r\n          \"IsCustom\": false,\r\n          \"IsImageBased\": false,\r\n          \"IsWindowsInstance\": false,\r\n          \"Name\": \"Default Selector\",\r\n          \"Properties\": []\r\n        }\r\n      ],\r\n      \"Tag\": \"window\",\r\n      \"ScreenshotPath\": \"controlRepo-screenshots\\\\7f0f19df-42a4-4b8c-ad84-a9b04310373b.png\"\r\n    }\r\n  ],\r\n  \"Version\": 1\r\n}",
+      "ImportMetadata": {
+        "DisplayName": "Computador local",
+        "ConnectionString": "",
+        "Type": "Local",
+        "DesktopType": "local"
+      },
+      "Name": "appmask"
+    }
+  ],
+  "ImageRepositorySymbol": {
+    "Repository": "{\r\n  \"Folders\": [],\r\n  \"Images\": [],\r\n  \"Version\": 1\r\n}",
+    "ImportMetadata": {},
+    "Name": "imgrepo"
+  },
+  "ConnectionReferences": []
+}

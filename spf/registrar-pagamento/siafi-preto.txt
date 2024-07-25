@@ -1,0 +1,114 @@
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: linha['Unidade Executora'] DelayBetweenKeystrokes: 5 SendTextAsHardwareKeys: True
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''%linha['Ano Empenho']%{Return}''' DelayBetweenKeystrokes: 5 SendTextAsHardwareKeys: True
+WAIT 1
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''07{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+WAIT 1
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''01{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+WAIT 1
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+WAIT 1
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''1{Tab}1{Return}{Tab}X{Return}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: True
+WAIT 1
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''%linha['U.O.']%%dadosCPF%%dadosCNPJ%%linha['Ordenador']%{Return}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+WAIT 1
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: linha['Ano Empenho'] DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+# Confere se conta única
+LOOP FOREACH linha_tdco IN dados_tdco
+    # Se conta única
+    IF (linha['U.O.'] = linha_tdco['UO']) AND (linha_tdco['Conta única'] = 'True') THEN
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''X{Tab}{Tab}{Tab}{Tab}{Tab}{Tab}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+    END
+    # Se não conta única insere dados bancários
+    IF (linha['U.O.'] = linha_tdco['UO']) AND (linha_tdco['Conta única'] = 'False') THEN
+        SET agencia_debito TO linha_tdco['Agência']
+        IF Contains(agencia_debito, $'''-''', False) THEN
+            Text.Replace Text: agencia_debito TextToFind: $'''-''' IsRegEx: False IgnoreCase: False ReplaceWith: $'''{Tab}''' ActivateEscapeSequences: False Result=> agencia_debito
+        ELSE
+            SET agencia_debito TO $'''%agencia_debito%{Tab}{Tab}'''
+        END
+        Text.Replace Text: linha_tdco['Conta'] TextToFind: $'''-''' IsRegEx: False IgnoreCase: False ReplaceWith: $'''{Tab}''' ActivateEscapeSequences: False Result=> conta_debito
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''{Tab}X%linha_tdco['Banco']%%agencia_debito%%conta_debito%''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+    END
+END
+DISABLE SET dados_tdco TO { ^['UO', 'Banco', 'Agência', 'Conta', 'Conta única'], ['1091', '341', '3380', '573-0', 'False'], ['1261', '', '', '', 'True'], ['4631', '', '', '', 'True'], ['4291', '999', '09001-9', '900579-3', 'False'], ['1441', '341', '3380', '830-4', 'False'], ['1541', '999', '09001-9', '900570-2', 'False'], ['2071', '999', '09001-9', '900151-1', 'False'], ['2271', '999', '09001-9', '900481-2', 'False'], ['2261', '999', '09001-9', '900480-4', 'False'], ['2311', '', '', '', 'True'], ['2321', '999', '09001-9', '900479-6', 'False'], ['1501', '', '', '', 'True'] }
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''%linha['Banco']%%dadosAgencia%%dadosDVAgencia%%dadosConta%%dadosDVConta%%linha['No. Empenho']%{Tab}%dadosValorBruto%{Tab}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+WAIT 1
+IF Contains(linha['Valor IRRF'], $'''-''', False) THEN
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''N{Return}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''X{F5}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+ELSE
+    /# Converte IR
+Retorna: dadosIR#/
+    Text.RecognizeEntitiesInText Text: linha['Valor IRRF'] Mode: Text.RecognizerMode.Number Language: Text.RecognizerLanguage.English RecognizedEntities=> tempIR
+    Variables.TruncateNumber.GetIntegerPart Number: tempIR[0][0] * 100 Result=> dadosIR
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''S1{Return}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+    WAIT 1
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''X{Return}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''{F5}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+    WAIT 1
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''%dadosIR%{Return}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+    IF dadosCPF = $'''{Tab}{Tab}''' THEN
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: dadosCNPJ DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: 6256 DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+    ELSE
+        SET dadosCPF TO $'''000%dadosCPF%'''
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: dadosCPF DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: 3208 DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+    END
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''%dadosIR%{Tab}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''%valorTotal%{Return}{F5}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+END
+WAIT 1
+# Confere Data Vencimento
+SET data_vencimento TO linha['Data Venc.']
+Text.ConvertTextToDateTime.ToDateTime Text: data_vencimento DateTime=> data_vencimento
+Display.ShowMessageDialog.ShowMessage Title: $'''Data''' Message: data_vencimento.DayOfWeek Icon: Display.Icon.None Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: False
+IF data_vencimento.DayOfWeek = $'''Saturday''' THEN
+    DateTime.Add DateTime: data_vencimento TimeToAdd: -1 TimeUnit: DateTime.TimeUnit.Days ResultedDate=> data_vencimento
+ELSE IF data_vencimento.DayOfWeek = $'''Sunday''' THEN
+    DateTime.Add DateTime: data_vencimento TimeToAdd: -2 TimeUnit: DateTime.TimeUnit.Days ResultedDate=> data_vencimento
+END
+DateTime.Subtract FromDate: tempDataAtual SubstractDate: data_vencimento TimeUnit: DateTime.DifferenceTimeUnit.Days TimeDifference=> tempDifData
+IF tempDifData >= (-1) THEN
+    /# Manter data que consta no Siafi
+Pagamento atrasado#/
+    Display.ShowMessageDialog.ShowMessage Title: $'''Data''' Message: $'''Conferir a data e apertar Ok''' Icon: Display.Icon.None Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: False
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''{Return}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+ELSE
+    /# Preenche com a data de vencimento
+Pagamento não atrasado#/
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''{Delete}{Delete}%data_vencimento.Day%{Delete}{Delete}%data_vencimento.Month%{Tab}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+    Display.ShowMessageDialog.ShowMessage Title: $'''Data''' Message: $'''Conferir a data e apertar Ok''' Icon: Display.Icon.None Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: False
+    MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''{Return}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+END
+DISABLE Display.ShowMessageDialog.ShowMessage Title: $'''Data''' Message: $'''Conferir a data e apertar \"Enter\" no Siafi Preto''' Icon: Display.Icon.None Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: False
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''pagamento referente a nota fiscal %linha['Número da Nota Fiscal']% - ID %linha['ID']% - Processo SEI n. %linha['Processo SEI']%{Return}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''{F5}{F5}''' DelayBetweenKeystrokes: 50 SendTextAsHardwareKeys: True
+UIAutomation.TakeScreenshotOfUIElement.TakeScreenshotOfUIElementAndSaveToFile Control: appmask['Window \'Mint0213:1\''] ImageFilePath: $'''C:\\Users\\AMSDO\\Downloads\\pagamento\\image.png''' ImageFormat: UIAutomation.ImageFormat.Png ImageFile=> ImageFile
+Display.ShowMessageDialog.ShowMessage Title: $'''Numero OP''' Message: $'''Copiar o número da OP e colocar na planilha.
+Não se esqueça de clicar na célula da esquerda.''' Icon: Display.Icon.None Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: False
+MouseAndKeyboard.SendKeys.FocusAndSendKeysByTitleClass Title: siafi_titulo Class: $'''''' TextToSend: $'''{F3}{F3}{F3}{F3}''' DelayBetweenKeystrokes: 100 SendTextAsHardwareKeys: True
+
+# [ControlRepository][PowerAutomateDesktop]
+
+{
+  "ControlRepositorySymbols": [
+    {
+      "IgnoreImagesOnSerialization": false,
+      "Repository": "{\r\n  \"Screens\": [\r\n    {\r\n      \"Controls\": [],\r\n      \"Handle\": {\r\n        \"value\": 0\r\n      },\r\n      \"ProcessName\": null,\r\n      \"ScreenShot\": null,\r\n      \"ElementTypeName\": \"Window\",\r\n      \"InstanceId\": \"347eaed8-6622-492f-b0fc-275e994bcee2\",\r\n      \"Name\": \"Window 'Mint0213:1'\",\r\n      \"SelectorCount\": 1,\r\n      \"Selectors\": [\r\n        {\r\n          \"CustomSelector\": null,\r\n          \"Elements\": [\r\n            {\r\n              \"Attributes\": [\r\n                {\r\n                  \"Ignore\": true,\r\n                  \"IsOrdinal\": false,\r\n                  \"Name\": \"Class\",\r\n                  \"Operation\": \"EqualTo\",\r\n                  \"Value\": \"gdkWindowToplevel\"\r\n                },\r\n                {\r\n                  \"Ignore\": true,\r\n                  \"IsOrdinal\": false,\r\n                  \"Name\": \"Enabled\",\r\n                  \"Operation\": \"EqualTo\",\r\n                  \"Value\": true\r\n                },\r\n                {\r\n                  \"Ignore\": true,\r\n                  \"IsOrdinal\": false,\r\n                  \"Name\": \"Id\",\r\n                  \"Operation\": \"EqualTo\",\r\n                  \"Value\": \"\"\r\n                },\r\n                {\r\n                  \"Ignore\": false,\r\n                  \"IsOrdinal\": false,\r\n                  \"Name\": \"Name\",\r\n                  \"Operation\": \"EqualTo\",\r\n                  \"Value\": \"Mint0213:1\"\r\n                },\r\n                {\r\n                  \"Ignore\": true,\r\n                  \"IsOrdinal\": true,\r\n                  \"Name\": \"Ordinal\",\r\n                  \"Operation\": \"EqualTo\",\r\n                  \"Value\": 0\r\n                },\r\n                {\r\n                  \"Ignore\": false,\r\n                  \"IsOrdinal\": false,\r\n                  \"Name\": \"Process\",\r\n                  \"Operation\": \"EqualTo\",\r\n                  \"Value\": \"remote-viewer\"\r\n                },\r\n                {\r\n                  \"Ignore\": true,\r\n                  \"IsOrdinal\": false,\r\n                  \"Name\": \"Visible\",\r\n                  \"Operation\": \"EqualTo\",\r\n                  \"Value\": true\r\n                }\r\n              ],\r\n              \"CustomValue\": null,\r\n              \"Ignore\": false,\r\n              \"Name\": \"Window 'Mint0213:1'\",\r\n              \"Tag\": \"window\"\r\n            }\r\n          ],\r\n          \"Ignore\": false,\r\n          \"ImageSelector\": null,\r\n          \"IsCustom\": false,\r\n          \"IsImageBased\": false,\r\n          \"IsWindowsInstance\": false,\r\n          \"Name\": \"Default Selector\",\r\n          \"Properties\": []\r\n        }\r\n      ],\r\n      \"Tag\": \"window\",\r\n      \"ScreenshotPath\": \"controlRepo-screenshots\\\\7f0f19df-42a4-4b8c-ad84-a9b04310373b.png\"\r\n    }\r\n  ],\r\n  \"Version\": 1\r\n}",
+      "ImportMetadata": {
+        "DisplayName": "Computador local",
+        "ConnectionString": "",
+        "Type": "Local",
+        "DesktopType": "local"
+      },
+      "Name": "appmask"
+    }
+  ],
+  "ImageRepositorySymbol": {
+    "Repository": "{\r\n  \"Folders\": [],\r\n  \"Images\": [],\r\n  \"Version\": 1\r\n}",
+    "ImportMetadata": {},
+    "Name": "imgrepo"
+  },
+  "ConnectionReferences": []
+}

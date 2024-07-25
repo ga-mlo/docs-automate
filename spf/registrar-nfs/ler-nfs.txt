@@ -1,0 +1,68 @@
+Folder.GetFiles Folder: $'''%processo%''' FileFilter: $'''*''' IncludeSubfolders: False FailOnAccessDenied: True SortBy1: Folder.SortBy.Name SortDescending1: True SortBy2: Folder.SortBy.NoSort SortDescending2: False SortBy3: Folder.SortBy.NoSort SortDescending3: False Files=> documentos
+SET dados_nf TO { ^['Processo SEI', 'Doc. SEI NF', 'Doc. SEI Ateste', 'Doc. SEI Conformidade', 'Número da Nota Fiscal ', 'Data emissão', 'Data de entrada', 'Data de vencimento', 'Início Competência', 'Fim Competência', 'Valor NF'] }
+# Data de entrada
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> data_entrada
+Text.ConvertDateTimeToText.FromDateTime DateTime: data_entrada StandardFormat: Text.WellKnownDateTimeFormat.ShortDate Result=> data_entrada
+# Número Processo SEI
+Text.CropText.CropTextAfterFlag Text: processo.Name FromFlag: $'''_''' IgnoreCase: False CroppedText=> n_processo_sei
+Text.CropText.CropTextAfterFlag Text: n_processo_sei FromFlag: $'''_''' IgnoreCase: False CroppedText=> n_processo_sei_ano
+Text.Replace Text: n_processo_sei_ano TextToFind: $'''_''' IsRegEx: False IgnoreCase: False ReplaceWith: $'''-''' ActivateEscapeSequences: False Result=> n_processo_sei_ano
+Text.CropText.CropTextBeforeFlag Text: n_processo_sei ToFlag: $'''_''' IgnoreCase: False CroppedText=> n_processo_sei_numero
+SET n_processo_sei TO n_processo_sei_numero + '/' + n_processo_sei_ano
+# Extrair NF
+LOOP FOREACH documento IN documentos
+    IF Contains(documento.Extension, $'''.pdf''', True) THEN
+        Text.CropText.CropTextBetweenFlags Text: documento.Name FromFlag: $''']-''' ToFlag: $'''_''' IgnoreCase: False CroppedText=> n_doc_sei_nf
+        Pdf.ExtractTextFromPDF.ExtractText PDFFile: documento DetectLayout: False ExtractedText=> texto_nota_fiscal
+        IF IsEmpty(texto_nota_fiscal) THEN
+            Display.ShowMessageDialog.ShowMessage Title: $'''Erro''' Message: $'''Processo SEI %n_processo_sei% possui nota fiscal  escaneada (Nota Fiscal: %documento.Name%)''' Icon: Display.Icon.ErrorIcon Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: False
+            EXIT LOOP
+        END
+        IF Contains(unidade.Name, $'''prodemge''', True) THEN
+            # Número nota fiscal
+            Text.CropText.CropTextBetweenFlags Text: texto_nota_fiscal FromFlag: $'''Nº:''' ToFlag: $''' Emitida''' IgnoreCase: False CroppedText=> n_nota_fiscal
+            Text.Trim Text: n_nota_fiscal TrimOption: Text.TrimOption.Both TrimmedText=> n_nota_fiscal
+            Text.Replace Text: n_nota_fiscal TextToFind: $'''/''' IsRegEx: False IgnoreCase: False ReplaceWith: $'''%''%''' ActivateEscapeSequences: False Result=> n_nota_fiscal
+            # Data de emissão
+            Text.CropText.CropTextBetweenFlags Text: texto_nota_fiscal FromFlag: $'''Emitida em:''' ToFlag: $''' às''' IgnoreCase: False CroppedText=> data_emissao_nf
+            Text.Trim Text: data_emissao_nf TrimOption: Text.TrimOption.Both TrimmedText=> data_emissao_nf
+            # Data de vencimento
+            SET data_vencimento_nf TO 0
+            # Competência
+            Text.CropText.CropTextBetweenFlags Text: texto_nota_fiscal FromFlag: $'''Competência:''' ToFlag: $'''Código ''' IgnoreCase: False CroppedText=> nf_competencia
+            Text.Trim Text: nf_competencia TrimOption: Text.TrimOption.Both TrimmedText=> nf_competencia
+            Text.CropText.CropTextAfterFlag Text: nf_competencia FromFlag: $'''/''' IgnoreCase: False CroppedText=> nf_competencia
+            Text.ConvertTextToDateTime.ToDateTimeCustomFormat Text: nf_competencia CustomFormat: $'''MM/yyyy''' DateTime=> nf_competencia_inicio
+            Text.ConvertDateTimeToText.FromDateTime DateTime: nf_competencia_inicio StandardFormat: Text.WellKnownDateTimeFormat.ShortDate Result=> nf_competencia_inicio
+            DateTime.Add DateTime: nf_competencia_inicio TimeToAdd: 1 TimeUnit: DateTime.TimeUnit.Months ResultedDate=> nf_competencia_fim
+            DateTime.Add DateTime: nf_competencia_fim TimeToAdd: -1 TimeUnit: DateTime.TimeUnit.Days ResultedDate=> nf_competencia_fim
+            Text.ConvertDateTimeToText.FromDateTime DateTime: nf_competencia_fim StandardFormat: Text.WellKnownDateTimeFormat.ShortDate Result=> nf_competencia_fim
+            # Valor Nota Fiscal
+            Text.CropText.CropTextBetweenFlags Text: texto_nota_fiscal FromFlag: $'''Valor dos serviços: R$ ''' ToFlag: $'''(-)''' IgnoreCase: False CroppedText=> valor_nf
+            Text.Trim Text: valor_nf TrimOption: Text.TrimOption.Both TrimmedText=> valor_nf
+        END
+        IF Contains(unidade.Name, $'''mgs''', True) THEN
+            Text.CropText.CropTextBetweenFlags Text: texto_nota_fiscal FromFlag: $'''N°: ''' ToFlag: $'''Codigo''' IgnoreCase: False CroppedText=> n_nota_fiscal
+            Text.Replace Text: n_nota_fiscal TextToFind: $'''000000''' IsRegEx: False IgnoreCase: False ReplaceWith: $'''%''%''' ActivateEscapeSequences: False Result=> n_nota_fiscal
+            Text.CropText.CropTextBetweenFlags Text: texto_nota_fiscal FromFlag: $'''DATA''' ToFlag: $'''VENCIMENTO''' IgnoreCase: False CroppedText=> data_emissao_nf
+            Text.CropText.CropTextBetweenFlags Text: texto_nota_fiscal FromFlag: $'''VENCIMENTO''' ToFlag: $'''DADOS''' IgnoreCase: False CroppedText=> data_vencimento_nf
+            Text.CropText.CropTextBetweenFlags Text: texto_nota_fiscal FromFlag: $'''Competência: ''' ToFlag: $'''SEPLAG''' IgnoreCase: False CroppedText=> nf_competencia
+            Text.Trim Text: nf_competencia TrimOption: Text.TrimOption.Both TrimmedText=> nf_competencia
+            Text.ConvertTextToDateTime.ToDateTimeCustomFormat Text: nf_competencia CustomFormat: $'''MM/yyyy''' DateTime=> nf_competencia_inicio
+            Text.ConvertDateTimeToText.FromDateTime DateTime: nf_competencia_inicio StandardFormat: Text.WellKnownDateTimeFormat.ShortDate Result=> nf_competencia_inicio
+            DateTime.Add DateTime: nf_competencia_inicio TimeToAdd: 1 TimeUnit: DateTime.TimeUnit.Months ResultedDate=> nf_competencia_fim
+            DateTime.Add DateTime: nf_competencia_fim TimeToAdd: -1 TimeUnit: DateTime.TimeUnit.Days ResultedDate=> nf_competencia_fim
+            Text.ConvertDateTimeToText.FromDateTime DateTime: nf_competencia_fim StandardFormat: Text.WellKnownDateTimeFormat.ShortDate Result=> nf_competencia_fim
+            # Valor Nota Fiscal
+            Text.CropText.CropTextBetweenFlags Text: texto_nota_fiscal FromFlag: $'''VALOR DOS SERVIÇOS''' ToFlag: $'''CARACTERÍSTICA DA FATURA''' IgnoreCase: False CroppedText=> valor_nf
+            Text.Trim Text: valor_nf TrimOption: Text.TrimOption.Both TrimmedText=> valor_nf
+            Text.SplitText.SplitWithDelimiter Text: valor_nf CustomDelimiter: $''',''' IsRegEx: False Result=> valor_nf_split
+            Text.GetSubtext.GetSubtextFromStartTo Text: valor_nf_split[1] NumberOfChars: 2 Subtext=> valor_nf_decimais
+            SET valor_nf TO valor_nf_split[0] + ',' + valor_nf_decimais
+        END
+        Variables.AddRowToDataTable.AppendRowToDataTable DataTable: dados_nf RowToAdd: [n_processo_sei, n_doc_sei_nf, n_doc_ateste_nf, '0', n_nota_fiscal, data_emissao_nf, data_entrada, data_vencimento_nf, nf_competencia_inicio, nf_competencia_fim, valor_nf]
+    END
+    IF Contains(documento.Name, $'''ateste''', True) THEN
+        Text.CropText.CropTextBetweenFlags Text: documento.Name FromFlag: $''']-''' ToFlag: $'''_''' IgnoreCase: False CroppedText=> n_doc_ateste_nf
+    END
+END
