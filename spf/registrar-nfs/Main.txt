@@ -1,3 +1,8 @@
+# Inicializa dados_nf
+SET dados_nf TO { ^['Processo SEI', 'Doc. SEI NF', 'Doc. SEI Ateste', 'Doc. SEI Conformidade', 'Número da Nota Fiscal ', 'Data emissão', 'Data de entrada', 'Data de vencimento', 'Início Competência', 'Fim Competência', 'Valor NF', 'Banco', 'Agência', 'Conta'] }
+# Inicializa planilha da rede
+WebAutomation.LaunchChrome.LaunchChrome Url: url_planilha_dcf WindowState: WebAutomation.BrowserWindowState.Maximized ClearCache: False ClearCookies: False WaitForPageToLoadTimeout: 60 Timeout: 60 PiPUserDataFolderMode: WebAutomation.PiPUserDataFolderModeEnum.AutomaticProfile BrowserInstance=> planilha_dcf_rede
+Display.ShowMessageDialog.ShowMessage Title: $'''ATENÇÃO!''' Message: $'''Para o correto funcionamento do fluxo, selecione a primeira célula vazia da planilha. ''' Icon: Display.Icon.Information Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: False
 Folder.GetSubfolders Folder: file_path_fluxo FolderFilter: $'''*''' IncludeSubfolders: False FailOnAccessDenied: True SortBy1: Folder.SortBy.FullName SortDescending1: True SortBy2: Folder.SortBy.NoSort SortDescending2: False SortBy3: Folder.SortBy.NoSort SortDescending3: False Subfolders=> unidades
 LOOP FOREACH unidade IN unidades
     Folder.GetSubfolders Folder: unidade FolderFilter: $'''*''' IncludeSubfolders: False FailOnAccessDenied: True SortBy1: Folder.SortBy.FullName SortDescending1: True SortBy2: Folder.SortBy.NoSort SortDescending2: False SortBy3: Folder.SortBy.NoSort SortDescending3: False Subfolders=> processos

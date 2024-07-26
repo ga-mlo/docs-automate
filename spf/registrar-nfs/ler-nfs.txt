@@ -1,5 +1,4 @@
 Folder.GetFiles Folder: $'''%processo%''' FileFilter: $'''*''' IncludeSubfolders: False FailOnAccessDenied: True SortBy1: Folder.SortBy.Name SortDescending1: True SortBy2: Folder.SortBy.NoSort SortDescending2: False SortBy3: Folder.SortBy.NoSort SortDescending3: False Files=> documentos
-SET dados_nf TO { ^['Processo SEI', 'Doc. SEI NF', 'Doc. SEI Ateste', 'Doc. SEI Conformidade', 'Número da Nota Fiscal ', 'Data emissão', 'Data de entrada', 'Data de vencimento', 'Início Competência', 'Fim Competência', 'Valor NF'] }
 # Data de entrada
 DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> data_entrada
 Text.ConvertDateTimeToText.FromDateTime DateTime: data_entrada StandardFormat: Text.WellKnownDateTimeFormat.ShortDate Result=> data_entrada
@@ -9,6 +8,10 @@ Text.CropText.CropTextAfterFlag Text: n_processo_sei FromFlag: $'''_''' IgnoreCa
 Text.Replace Text: n_processo_sei_ano TextToFind: $'''_''' IsRegEx: False IgnoreCase: False ReplaceWith: $'''-''' ActivateEscapeSequences: False Result=> n_processo_sei_ano
 Text.CropText.CropTextBeforeFlag Text: n_processo_sei ToFlag: $'''_''' IgnoreCase: False CroppedText=> n_processo_sei_numero
 SET n_processo_sei TO n_processo_sei_numero + '/' + n_processo_sei_ano
+DISABLE Excel.LaunchExcel.LaunchAndOpenUnderExistingProcess Path: $'''%file_path_fluxo%\\planilha_auxiliar.xlsx''' Visible: False ReadOnly: False Instance=> planilha
+DISABLE SET col TO 1
+DISABLE SET li TO 2
+Display.ShowMessageDialog.ShowMessageWithTimeout Title: $'''Leitura em andamento''' Message: $'''Iniciando a leitura das notas do processo %n_processo_sei%''' Icon: Display.Icon.Information Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: False Timeout: 3
 # Extrair NF
 LOOP FOREACH documento IN documentos
     IF Contains(documento.Extension, $'''.pdf''', True) THEN
@@ -21,13 +24,11 @@ LOOP FOREACH documento IN documentos
         IF Contains(unidade.Name, $'''prodemge''', True) THEN
             # Número nota fiscal
             Text.CropText.CropTextBetweenFlags Text: texto_nota_fiscal FromFlag: $'''Nº:''' ToFlag: $''' Emitida''' IgnoreCase: False CroppedText=> n_nota_fiscal
-            Text.Trim Text: n_nota_fiscal TrimOption: Text.TrimOption.Both TrimmedText=> n_nota_fiscal
             Text.Replace Text: n_nota_fiscal TextToFind: $'''/''' IsRegEx: False IgnoreCase: False ReplaceWith: $'''%''%''' ActivateEscapeSequences: False Result=> n_nota_fiscal
             # Data de emissão
             Text.CropText.CropTextBetweenFlags Text: texto_nota_fiscal FromFlag: $'''Emitida em:''' ToFlag: $''' às''' IgnoreCase: False CroppedText=> data_emissao_nf
-            Text.Trim Text: data_emissao_nf TrimOption: Text.TrimOption.Both TrimmedText=> data_emissao_nf
             # Data de vencimento
-            SET data_vencimento_nf TO 0
+            SET data_vencimento_nf TO $'''01/01/2024'''
             # Competência
             Text.CropText.CropTextBetweenFlags Text: texto_nota_fiscal FromFlag: $'''Competência:''' ToFlag: $'''Código ''' IgnoreCase: False CroppedText=> nf_competencia
             Text.Trim Text: nf_competencia TrimOption: Text.TrimOption.Both TrimmedText=> nf_competencia
@@ -39,7 +40,9 @@ LOOP FOREACH documento IN documentos
             Text.ConvertDateTimeToText.FromDateTime DateTime: nf_competencia_fim StandardFormat: Text.WellKnownDateTimeFormat.ShortDate Result=> nf_competencia_fim
             # Valor Nota Fiscal
             Text.CropText.CropTextBetweenFlags Text: texto_nota_fiscal FromFlag: $'''Valor dos serviços: R$ ''' ToFlag: $'''(-)''' IgnoreCase: False CroppedText=> valor_nf
-            Text.Trim Text: valor_nf TrimOption: Text.TrimOption.Both TrimmedText=> valor_nf
+            SET banco TO '341'
+            SET agencia TO '3314'
+            SET conta TO '01166-3'
         END
         IF Contains(unidade.Name, $'''mgs''', True) THEN
             Text.CropText.CropTextBetweenFlags Text: texto_nota_fiscal FromFlag: $'''N°: ''' ToFlag: $'''Codigo''' IgnoreCase: False CroppedText=> n_nota_fiscal
@@ -59,8 +62,21 @@ LOOP FOREACH documento IN documentos
             Text.SplitText.SplitWithDelimiter Text: valor_nf CustomDelimiter: $''',''' IsRegEx: False Result=> valor_nf_split
             Text.GetSubtext.GetSubtextFromStartTo Text: valor_nf_split[1] NumberOfChars: 2 Subtext=> valor_nf_decimais
             SET valor_nf TO valor_nf_split[0] + ',' + valor_nf_decimais
+            SET banco TO '341'
+            SET agencia TO '3380'
+            SET conta TO '00722-3'
         END
-        Variables.AddRowToDataTable.AppendRowToDataTable DataTable: dados_nf RowToAdd: [n_processo_sei, n_doc_sei_nf, n_doc_ateste_nf, '0', n_nota_fiscal, data_emissao_nf, data_entrada, data_vencimento_nf, nf_competencia_inicio, nf_competencia_fim, valor_nf]
+        # Remove espaços em branco texto
+        Text.Trim Text: n_nota_fiscal TrimOption: Text.TrimOption.Both TrimmedText=> n_nota_fiscal
+        Text.Trim Text: data_emissao_nf TrimOption: Text.TrimOption.Both TrimmedText=> data_emissao_nf
+        Text.Trim Text: valor_nf TrimOption: Text.TrimOption.Both TrimmedText=> valor_nf
+        Text.Trim Text: data_entrada TrimOption: Text.TrimOption.Both TrimmedText=> data_entrada
+        Text.Trim Text: data_vencimento_nf TrimOption: Text.TrimOption.Both TrimmedText=> data_vencimento_nf
+        # Gravar em dados_nf
+        Variables.AddRowToDataTable.AppendRowToDataTable DataTable: dados_nf RowToAdd: [n_processo_sei, n_doc_sei_nf, n_doc_ateste_nf, '0', n_nota_fiscal, data_emissao_nf, data_entrada, data_vencimento_nf, nf_competencia_inicio, nf_competencia_fim, valor_nf, banco, agencia, conta]
+        # Gravar na planilha da rede
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha_dcf_rede TextToSend: $'''%n_processo_sei%{Tab}%n_doc_sei_nf%{Tab}%n_doc_ateste_nf%{Tab}{Tab}%n_nota_fiscal%{Tab}%data_emissao_nf%{Tab}%data_entrada%{Tab}%data_vencimento_nf%{Tab}%nf_competencia_inicio%{Tab}%nf_competencia_fim%{Tab}{Tab}{Tab}{Tab}{Tab}{Tab}{Tab}{Tab}%valor_nf%{Tab}{Tab}{Tab}{Tab}{Tab}{Tab}%banco%{Tab}%agencia%{Tab}%conta%''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
+        MouseAndKeyboard.SendKeys.FocusAndSendKeysByInstanceOrHandle WindowInstance: planilha_dcf_rede TextToSend: $'''{Down}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}{Left}''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False
     END
     IF Contains(documento.Name, $'''ateste''', True) THEN
         Text.CropText.CropTextBetweenFlags Text: documento.Name FromFlag: $''']-''' ToFlag: $'''_''' IgnoreCase: False CroppedText=> n_doc_ateste_nf
