@@ -16,4 +16,5 @@
 - Jogo criado para realização de dinâmica em grupo da equipe da SPF.
 - Utiliza o Excel e Automate para a criação e execução do jogo.
 
-> Os arquivos config.xlsx possuem as variáveis de entrada utilizadas para o funcionamento dos respectivos fluxos.
+## Observação
+Os arquivos config.xlsx possuem as variáveis de entrada utilizadas para o funcionamento dos respectivos fluxos.
